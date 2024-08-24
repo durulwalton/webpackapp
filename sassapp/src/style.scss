@@ -1,0 +1,9 @@
+$body-color: green;
+
+body {
+  background: $body-color;
+}
+
+::placeholder {
+  color: $body-color;
+}
