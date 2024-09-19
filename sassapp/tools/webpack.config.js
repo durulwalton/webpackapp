@@ -1,5 +1,4 @@
 const path = require("path");
-const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
 const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
@@ -13,34 +12,34 @@ const assetDistPath = distPath + "/assets";
 const config = {
   mode: "development",
   entry: {
-    "js/scripts.bundle": "./webpack/scripts.js",
     "css/style.bundle": [
       "./" + path.relative("./", srcPath) + "/sass/style.scss",
-      "./" + path.relative("./", srcPath) + "/sass/style.css",
     ],
+    "js/scripts.bundle": "./webpack/scripts.demo1.js",
   },
   output: {
     path: assetDistPath,
     filename: "[name].js",
+    publicPath:distPath
   },
-  // webpack dev server config
   devServer: {
     static: {
       directory: distPath,
     },
     compress: true,
     port: 8080,
+    hot: true,
   },
-  optimization: {
-    minimize: true,
-    minimizer: [new TerserPlugin(), new CssMinimizerPlugin()],
-  },
+  // optimization: {
+  //   minimize: true,
+  //   minimizer: [new TerserPlugin(), new CssMinimizerPlugin()],
+  // },
   plugins: [
     new MiniCssExtractPlugin({
       filename: "[name].css",
     }),
     new ExcludeAssetsPlugin({
-      path: ["\/.*\.js$"],
+      path: ["css/.*.js$"],
     }),
   ],
   // resolve: {
@@ -60,7 +59,26 @@ const config = {
       },
       {
         test: /\.s[ac]ss$/i,
-        use: [MiniCssExtractPlugin.loader, "css-loader", "sass-loader"],
+        use: [
+          MiniCssExtractPlugin.loader,
+          {
+            loader: "css-loader",
+          },
+          {
+            loader: "sass-loader",
+            options: {
+              // Prefer `dart-sass`
+              implementation: require("sass"),
+              sourceMap: false,
+              sassOptions: {
+                includePaths: [
+                  corePath,
+                  path.resolve(__dirname, "node_modules"),
+                ],
+              },
+            },
+          },
+        ],
       },
     ],
   },

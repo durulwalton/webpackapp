@@ -1,0 +1,262 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box; // 1
+}
+// Container widths
+//
+// Set the container width, and override it for fixed navbars in media queries.
+$enable-grid-classes: true !default;
+$grid-gutter-width: 30px !default;
+@function divide($dividend, $divisor, $precision: 10) {
+  $sign: if($dividend > 0 and $divisor > 0 or $dividend < 0 and $divisor < 0, 1, -1);
+  $dividend: abs($dividend);
+  $divisor: abs($divisor);
+  @if $dividend == 0 {
+    @return 0;
+  }
+  @if $divisor == 0 {
+    @error "Cannot divide by 0";
+  }
+  $remainder: $dividend;
+  $result: 0;
+  $factor: 10;
+  @while ($remainder > 0 and $precision >= 0) {
+    $quotient: 0;
+    @while ($remainder >= $divisor) {
+      $remainder: $remainder - $divisor;
+      $quotient: $quotient + 1;
+    }
+    $result: $result * 10 + $quotient;
+    $factor: $factor * .1;
+    $remainder: $remainder * 10;
+    $precision: $precision - 1;
+    @if ($precision < 0 and $remainder >= $divisor * 5) {
+      $result: $result + 1;
+    }
+  }
+  $result: $result * $factor * $sign;
+  $dividend-unit: unit($dividend);
+  $divisor-unit: unit($divisor);
+  $unit-map: (
+    "px": 1px,
+    "rem": 1rem,
+    "em": 1em,
+    "%": 1%
+  );
+  @if ($dividend-unit != $divisor-unit and map-has-key($unit-map, $dividend-unit)) {
+    $result: $result * map-get($unit-map, $dividend-unit);
+  }
+  @return $result;
+}
+$grid-breakpoints: (
+  xs: 0,
+  sm: 576px,
+  md: 768px,
+  lg: 992px,
+  xl: 1200px,
+) !default;
+$container-max-widths: (
+  sm: 540px,
+  md: 720px,
+  lg: 960px,
+  xl: 1140px,
+) !default;
+@function breakpoint-min($name, $breakpoints: $grid-breakpoints) {
+  $min: map-get($breakpoints, $name);
+  @return if($min != 0, $min, null);
+}
+@function breakpoint-infix($name, $breakpoints: $grid-breakpoints) {
+  @return if(breakpoint-min($name, $breakpoints) == null, "", "-#{$name}");
+}
+
+@mixin make-container($gutter: $grid-gutter-width) {
+  width: 100%;
+  padding-right: $gutter * 0.5;
+  padding-left: $gutter * 0.5;
+  margin-right: auto;
+  margin-left: auto;
+}
+@mixin media-breakpoint-up($name, $breakpoints: $grid-breakpoints) {
+  $min: breakpoint-min($name, $breakpoints);
+  @if $min {
+    @media (min-width: $min) {
+      @content;
+    }
+  } @else {
+    @content;
+  }
+}
+
+@if $enable-grid-classes {
+  // Single container class with breakpoint max-widths
+  .container,
+    // 100% wide container at all breakpoints
+    .container-fluid {
+    @include make-container();
+  }
+
+  @each $breakpoint, $container-max-width in $container-max-widths {
+    .container-#{$breakpoint} {
+      @extend .container-fluid;
+    }
+
+    @include media-breakpoint-up($breakpoint, $grid-breakpoints) {
+      %responsive-container-#{$breakpoint} {
+        max-width: $container-max-width;
+      }
+
+      // Extend each breakpoint which is smaller or equal to the current breakpoint
+      $extend-breakpoint: true;
+
+      @each $name, $width in $grid-breakpoints {
+        @if ($extend-breakpoint) {
+          .container#{breakpoint-infix($name, $grid-breakpoints)} {
+            @extend %responsive-container-#{$breakpoint};
+          }
+
+          // Once the current breakpoint is reached, stop extending
+          @if ($breakpoint == $name) {
+            $extend-breakpoint: false;
+          }
+        }
+      }
+    }
+  }
+}
+$grid-columns: 12 !default;
+$grid-gutter-width: 30px !default;
+$grid-row-columns: 6 !default;
+@mixin make-col($size, $columns: $grid-columns) {
+  flex: 0 0 percentage(divide($size, $columns));
+  // Add a `max-width` to ensure content within each column does not blow out
+  // the width of the column. Applies to IE10+ and Firefox. Chrome and Safari
+  // do not appear to require this.
+  max-width: percentage(divide($size, $columns));
+}
+@mixin make-col-auto() {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: 100%; // Reset earlier grid tiers
+}
+
+@mixin row-cols($count) {
+    > * {
+      flex: 0 0 divide(100%, $count);
+      max-width: divide(100%, $count);
+    }
+  }
+  
+@mixin make-row($gutter: $grid-gutter-width) {
+  display: flex;
+  flex-wrap: wrap;
+  margin-right: -$gutter * 0.5;
+  margin-left: -$gutter * 0.5;
+}
+@mixin make-grid-columns(
+  $columns: $grid-columns,
+  $gutter: $grid-gutter-width,
+  $breakpoints: $grid-breakpoints
+) {
+  // Common properties for all breakpoints
+  %grid-column {
+    position: relative;
+    width: 100%;
+    padding-right: $gutter * 0.5;
+    padding-left: $gutter * 0.5;
+  }
+
+  @each $breakpoint in map-keys($breakpoints) {
+    $infix: breakpoint-infix($breakpoint, $breakpoints);
+
+    @if $columns > 0 {
+      // Allow columns to stretch full width below their breakpoints
+      @for $i from 1 through $columns {
+        .col#{$infix}-#{$i} {
+          @extend %grid-column;
+        }
+      }
+    }
+
+    .col#{$infix},
+    .col#{$infix}-auto {
+      @extend %grid-column;
+    }
+
+    @include media-breakpoint-up($breakpoint, $breakpoints) {
+      // Provide basic `.col-{bp}` classes for equal-width flexbox columns
+      .col#{$infix} {
+        flex-basis: 0;
+        flex-grow: 1;
+        max-width: 100%;
+      }
+
+      @if $grid-row-columns > 0 {
+        @for $i from 1 through $grid-row-columns {
+          .row-cols#{$infix}-#{$i} {
+            @include row-cols($i);
+          }
+        }
+      }
+
+      .col#{$infix}-auto {
+        @include make-col-auto();
+      }
+
+      @if $columns > 0 {
+        @for $i from 1 through $columns {
+          .col#{$infix}-#{$i} {
+            @include make-col($i, $columns);
+          }
+        }
+      }
+
+      //   .order#{$infix}-first {
+      //     order: -1;
+      //   }
+
+      //   .order#{$infix}-last {
+      //     order: $columns + 1;
+      //   }
+
+      //   @for $i from 0 through $columns {
+      //     .order#{$infix}-#{$i} {
+      //       order: $i;
+      //     }
+      //   }
+
+      //   @if $columns > 0 {
+      //     // `$columns - 1` because offsetting by the width of an entire row isn't possible
+      //     @for $i from 0 through ($columns - 1) {
+      //       @if not($infix == "" and $i == 0) {
+      //         // Avoid emitting useless .offset-0
+      //         .offset#{$infix}-#{$i} {
+      //           @include make-col-offset($i, $columns);
+      //         }
+      //       }
+      //     }
+      //   }
+    }
+  }
+}
+
+@if $enable-grid-classes {
+  .row {
+    @include make-row();
+  }
+
+  .no-gutters {
+    margin-right: 0;
+    margin-left: 0;
+
+    > .col,
+    > [class*="col-"] {
+      padding-right: 0;
+      padding-left: 0;
+    }
+  }
+}
+
+@if $enable-grid-classes {
+  @include make-grid-columns();
+}
