@@ -1,14 +1,23 @@
-@use "sass:math";
+$black: #000 !default;
 *,
 *::before,
 *::after {
-  box-sizing: border-box;
+  box-sizing: border-box; // 1
+}
+
+html {
+  font-family: sans-serif; // 2
+  line-height: 1.15; // 3
+  -webkit-text-size-adjust: 100%; // 4
+  -webkit-tap-highlight-color: rgba($black, 0); // 5
 }
 // Function
-
 @function breakpoint-min($name, $breakpoints: $grid-breakpoints) {
   $min: map-get($breakpoints, $name);
   @return if($min != 0, $min, null);
+}
+@function breakpoint-infix($name, $breakpoints: $grid-breakpoints) {
+  @return if(breakpoint-min($name, $breakpoints) == null, "", "-#{$name}");
 }
 @function breakpoint-infix($name, $breakpoints: $grid-breakpoints) {
   @return if(breakpoint-min($name, $breakpoints) == null, "", "-#{$name}");
@@ -60,49 +69,36 @@
   }
   @return $result;
 }
+
 // Variables
+$enable-grid-classes: true !default;
+$grid-gutter-width: 30px !default;
+
 $grid-breakpoints: (
   xs: 0,
   sm: 576px,
   md: 768px,
   lg: 992px,
   xl: 1200px,
-  xxl: 1400px,
 ) !default;
-
 $container-max-widths: (
   sm: 540px,
   md: 720px,
   lg: 960px,
   xl: 1140px,
-  xxl: 1320px,
 ) !default;
 
-$enable-container-classes: true !default;
-$grid-gutter-width: 1.5rem !default;
-$container-padding-x: $grid-gutter-width !default;
-
-$variable-prefix: bs- !default; // Deprecated in v5.2.0 for the shorter `$prefix`
-$prefix: $variable-prefix !default;
-$enable-grid-classes: true !default;
-$include-column-box-sizing: true !default;
-$enable-cssgrid: false !default;
-$enable-grid-classes: true !default;
 $grid-columns: 12 !default;
+$grid-gutter-width: 30px !default;
 $grid-row-columns: 6 !default;
-$grid-gutter-width: 1.5rem !default;
-$spacer: 1rem !default;
-$spacers: (
-  0: 0,
-  1: $spacer * 0.25,
-  2: $spacer * 0.5,
-  3: $spacer,
-  4: $spacer * 1.5,
-  5: $spacer * 3,
-) !default;
-$gutters: $spacers !default;
 // Mixin
-
+@mixin make-container($gutter: $grid-gutter-width) {
+  width: 100%;
+  padding-right: $gutter * 0.5;
+  padding-left: $gutter * 0.5;
+  margin-right: auto;
+  margin-left: auto;
+}
 @mixin media-breakpoint-up($name, $breakpoints: $grid-breakpoints) {
   $min: breakpoint-min($name, $breakpoints);
   @if $min {
@@ -113,97 +109,66 @@ $gutters: $spacers !default;
     @content;
   }
 }
-@mixin make-container($gutter: $container-padding-x) {
-  --#{$prefix}gutter-x: #{$gutter};
-  --#{$prefix}gutter-y: 0;
-  width: 100%;
-  padding-right: calc(var(--#{$prefix}gutter-x) * 0.5);
-  padding-left: calc(var(--#{$prefix}gutter-x) * 0.5);
-  margin-right: auto;
-  margin-left: auto;
+@mixin make-row($gutter: $grid-gutter-width) {
+  display: flex;
+  flex-wrap: wrap;
+  margin-right: -$gutter * 0.5;
+  margin-left: -$gutter * 0.5;
 }
-@mixin make-col-offset($size, $columns: $grid-columns) {
-  $num: divide($size, $columns);
-  margin-left: if($num == 0, 0, percentage($num));
-}
-@mixin make-col($size: false, $columns: $grid-columns) {
-  @if $size {
-    flex: 0 0 auto;
-    width: percentage(divide($size, $columns));
-  } @else {
-    flex: 1 1 0;
-    max-width: 100%;
+@mixin row-cols($count) {
+  > * {
+    flex: 0 0 divide(100%, $count);
+    max-width: divide(100%, $count);
   }
 }
 @mixin make-col-auto() {
   flex: 0 0 auto;
   width: auto;
+  max-width: 100%; // Reset earlier grid tiers
 }
-@mixin row-cols($count) {
-  > * {
-    flex: 0 0 auto;
-    width: percentage(divide(1, $count));
-  }
+@mixin make-col($size, $columns: $grid-columns) {
+  flex: 0 0 percentage(divide($size, $columns));
+  // Add a `max-width` to ensure content within each column does not blow out
+  // the width of the column. Applies to IE10+ and Firefox. Chrome and Safari
+  // do not appear to require this.
+  max-width: percentage(divide($size, $columns));
 }
-@mixin make-row($gutter: $grid-gutter-width) {
-  --#{$prefix}gutter-x: #{$gutter};
-  --#{$prefix}gutter-y: 0;
-  display: flex;
-  flex-wrap: wrap;
-  margin-top: calc(-1 * var(--#{$prefix}gutter-y));
-  margin-right: calc(-0.5 * var(--#{$prefix}gutter-x));
-  margin-left: calc(-0.5 * var(--#{$prefix}gutter-x));
-}
-@mixin make-col-ready() {
-  box-sizing: if(
-    variable-exists(include-column-box-sizing) and $include-column-box-sizing,
-    border-box,
-    null
-  );
-  flex-shrink: 0;
-  width: 100%;
-  max-width: 100%;
-  padding-right: calc(var(--#{$prefix}gutter-x) * 0.5);
-  padding-left: calc(var(--#{$prefix}gutter-x) * 0.5);
-  margin-top: var(--#{$prefix}gutter-y);
-}
-@mixin make-cssgrid($columns: $grid-columns, $breakpoints: $grid-breakpoints) {
-  @each $breakpoint in map-keys($breakpoints) {
-    $infix: breakpoint-infix($breakpoint, $breakpoints);
-
-    @include media-breakpoint-up($breakpoint, $breakpoints) {
-      @if $columns > 0 {
-        @for $i from 1 through $columns {
-          .g-col#{$infix}-#{$i} {
-            grid-column: auto / span $i;
-          }
-        }
-        @for $i from 1 through ($columns - 1) {
-          .g-start#{$infix}-#{$i} {
-            grid-column-start: $i;
-          }
-        }
-      }
-    }
-  }
-}
-
 @mixin make-grid-columns(
   $columns: $grid-columns,
   $gutter: $grid-gutter-width,
   $breakpoints: $grid-breakpoints
 ) {
+  // Common properties for all breakpoints
+  %grid-column {
+    position: relative;
+    width: 100%;
+    padding-right: $gutter * 0.5;
+    padding-left: $gutter * 0.5;
+  }
+
   @each $breakpoint in map-keys($breakpoints) {
     $infix: breakpoint-infix($breakpoint, $breakpoints);
+
+    @if $columns > 0 {
+      // Allow columns to stretch full width below their breakpoints
+      @for $i from 1 through $columns {
+        .col#{$infix}-#{$i} {
+          @extend %grid-column;
+        }
+      }
+    }
+
+    .col#{$infix},
+    .col#{$infix}-auto {
+      @extend %grid-column;
+    }
 
     @include media-breakpoint-up($breakpoint, $breakpoints) {
       // Provide basic `.col-{bp}` classes for equal-width flexbox columns
       .col#{$infix} {
-        flex: 1 0 0%; // Flexbugs #4: https://github.com/philipwalton/flexbugs#flexbug-4
-      }
-
-      .row-cols#{$infix}-auto > * {
-        @include make-col-auto();
+        flex-basis: 0;
+        flex-grow: 1;
+        max-width: 100%;
       }
 
       @if $grid-row-columns > 0 {
@@ -225,15 +190,53 @@ $gutters: $spacers !default;
           }
         }
       }
+
+      .order#{$infix}-first {
+        order: -1;
+      }
+
+      .order#{$infix}-last {
+        order: $columns + 1;
+      }
+
+      @for $i from 0 through $columns {
+        .order#{$infix}-#{$i} {
+          order: $i;
+        }
+      }
+
+      @if $columns > 0 {
+        // `$columns - 1` because offsetting by the width of an entire row isn't possible
+        @for $i from 0 through ($columns - 1) {
+          @if not($infix == "" and $i == 0) {
+            // Avoid emitting useless .offset-0
+            .offset#{$infix}-#{$i} {
+              @include make-col-offset($i, $columns);
+            }
+          }
+        }
+      }
     }
   }
 }
+@mixin make-col-offset($size, $columns: $grid-columns) {
+  $num: divide($size, $columns);
+  margin-left: if($num == 0, 0, percentage($num));
+}
 // Classes
-@if $enable-container-classes {
+// Container widths
+//
+// Set the container width, and override it for fixed navbars in media queries.
+
+@if $enable-grid-classes {
+  // Single container class with breakpoint max-widths
   .container,
+  // 100% wide container at all breakpoints
   .container-fluid {
     @include make-container();
   }
+
+  // Responsive containers that are 100% wide until a breakpoint
   @each $breakpoint, $container-max-width in $container-max-widths {
     .container-#{$breakpoint} {
       @extend .container-fluid;
@@ -243,12 +246,17 @@ $gutters: $spacers !default;
       %responsive-container-#{$breakpoint} {
         max-width: $container-max-width;
       }
+
+      // Extend each breakpoint which is smaller or equal to the current breakpoint
       $extend-breakpoint: true;
+
       @each $name, $width in $grid-breakpoints {
         @if ($extend-breakpoint) {
           .container#{breakpoint-infix($name, $grid-breakpoints)} {
             @extend %responsive-container-#{$breakpoint};
           }
+
+          // Once the current breakpoint is reached, stop extending
           @if ($breakpoint == $name) {
             $extend-breakpoint: false;
           }
@@ -258,15 +266,32 @@ $gutters: $spacers !default;
   }
 }
 
+// Row
+//
+// Rows contain your columns.
+
 @if $enable-grid-classes {
   .row {
     @include make-row();
+  }
 
-    > * {
-      @include make-col-ready();
+  // Remove the negative margin from default .row, then the horizontal padding
+  // from all immediate children columns (to prevent runaway style inheritance).
+  .no-gutters {
+    margin-right: 0;
+    margin-left: 0;
+
+    > .col,
+    > [class*="col-"] {
+      padding-right: 0;
+      padding-left: 0;
     }
   }
 }
+
+// Columns
+//
+// Common styles for small and large grid columns
 
 @if $enable-grid-classes {
   @include make-grid-columns();

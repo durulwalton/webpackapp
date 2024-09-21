@@ -1,0 +1,169 @@
+@use "sass:math";
+*,
+*::before,
+*::after {
+  box-sizing: border-box; // 1
+}
+html {
+  font-family: sans-serif; // 1
+  -ms-text-size-adjust: 100%; // 2
+  -webkit-text-size-adjust: 100%; // 2
+}
+//
+// Remove default margin.
+//
+body {
+  margin: 0;
+}
+// Variables
+$grid-columns: 12 !default;
+$grid-gutter-width: 30px !default;
+$screen-sm: 768px !default;
+$screen-sm-min: $screen-sm !default;
+$container-tablet: (720px + $grid-gutter-width) !default;
+$container-sm: $container-tablet !default;
+$screen-md: 992px !default;
+$screen-md-min: $screen-md !default;
+$container-desktop: (940px + $grid-gutter-width) !default;
+$container-md: $container-desktop !default;
+$screen-lg: 1200px !default;
+$screen-lg-min: $screen-lg !default;
+$container-large-desktop: (1140px + $grid-gutter-width) !default;
+$container-lg: $container-large-desktop !default;
+// Mixin
+@mixin clearfix() {
+  &::after {
+    display: block;
+    clear: both;
+    content: "";
+  }
+}
+
+@mixin container-fixed($gutter: $grid-gutter-width) {
+  padding-right: ceil(math.div($gutter, 2));
+  padding-left: floor(math.div($gutter, 2));
+  margin-right: auto;
+  margin-left: auto;
+  @include clearfix;
+}
+@mixin make-row($gutter: $grid-gutter-width) {
+  margin-right: floor(math.div($gutter, -2));
+  margin-left: ceil(math.div($gutter, -2));
+  @include clearfix;
+}
+@mixin make-grid-columns(
+  $i: 1,
+  $list: ".col-xs-#{$i}, .col-sm-#{$i}, .col-md-#{$i}, .col-lg-#{$i}"
+) {
+  @for $i from (1 + 1) through $grid-columns {
+    $list: "#{$list}, .col-xs-#{$i}, .col-sm-#{$i}, .col-md-#{$i}, .col-lg-#{$i}";
+  }
+  #{$list} {
+    position: relative;
+    // Prevent columns from collapsing when empty
+    min-height: 1px;
+    // Inner gutter via padding
+    padding-right: floor(math.div($grid-gutter-width, 2));
+    padding-left: ceil(math.div($grid-gutter-width, 2));
+  }
+}
+@mixin float-grid-columns($class, $i: 1, $list: ".col-#{$class}-#{$i}") {
+  @for $i from (1 + 1) through $grid-columns {
+    $list: "#{$list}, .col-#{$class}-#{$i}";
+  }
+  #{$list} {
+    float: left;
+  }
+}
+@mixin calc-grid-column($index, $class, $type) {
+  @if ($type == width) and ($index > 0) {
+    .col-#{$class}-#{$index} {
+      width: percentage(math.div($index, $grid-columns));
+    }
+  }
+  @if ($type == push) and ($index > 0) {
+    .col-#{$class}-push-#{$index} {
+      left: percentage(math.div($index, $grid-columns));
+    }
+  }
+  @if ($type == push) and ($index == 0) {
+    .col-#{$class}-push-0 {
+      left: auto;
+    }
+  }
+  @if ($type == pull) and ($index > 0) {
+    .col-#{$class}-pull-#{$index} {
+      right: percentage(math.div($index, $grid-columns));
+    }
+  }
+  @if ($type == pull) and ($index == 0) {
+    .col-#{$class}-pull-0 {
+      right: auto;
+    }
+  }
+  @if ($type == offset) {
+    .col-#{$class}-offset-#{$index} {
+      margin-left: percentage(math.div($index, $grid-columns));
+    }
+  }
+}
+@mixin loop-grid-columns($columns, $class, $type) {
+  @for $i from 0 through $columns {
+    @include calc-grid-column($i, $class, $type);
+  }
+}
+@mixin make-grid($class) {
+  @include float-grid-columns($class);
+  @include loop-grid-columns($grid-columns, $class, width);
+  // @include loop-grid-columns($grid-columns, $class, pull);
+  // @include loop-grid-columns($grid-columns, $class, push);
+  // @include loop-grid-columns($grid-columns, $class, offset);
+}
+// Container
+.container {
+  @include container-fixed;
+
+  @media (min-width: $screen-sm-min) {
+    width: $container-sm;
+  }
+  @media (min-width: $screen-md-min) {
+    width: $container-md;
+  }
+  @media (min-width: $screen-lg-min) {
+    width: $container-lg;
+  }
+}
+
+.container-fluid {
+  @include container-fixed;
+}
+
+.row {
+  @include make-row;
+}
+
+.row-no-gutters {
+  margin-right: 0;
+  margin-left: 0;
+
+  [class*="col-"] {
+    padding-right: 0;
+    padding-left: 0;
+  }
+}
+
+@include make-grid-columns;
+
+@include make-grid(xs);
+
+@media (min-width: $screen-sm-min) {
+  @include make-grid(sm);
+}
+
+@media (min-width: $screen-md-min) {
+  @include make-grid(md);
+}
+
+@media (min-width: $screen-lg-min) {
+  @include make-grid(lg);
+}
