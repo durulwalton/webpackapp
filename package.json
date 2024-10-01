@@ -23,5 +23,10 @@
     "webpack-dev-server": "^5.1.0",
     "webpack-exclude-assets-plugin": "^0.1.1",
     "webpack-log": "^3.0.2"
+  },
+  "dependencies": {
+    "redux": "^5.0.1",
+    "redux-thunk": "^3.1.0",
+    "three": "^0.169.0"
   }
 }

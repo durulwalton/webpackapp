@@ -4,7 +4,7 @@ module.exports = {
   mode: "development",
   entry: {
     "js/scripts.bundle": "./src/js/index.js",
-    "css/style.bundle": "./src/sass/style.scss",
+    "css/style.bundle": "./src/sass/talha/style.scss",
   },
   output: {
     filename: "[name].js",
